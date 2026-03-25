@@ -33,10 +33,13 @@
     box-sizing: border-box;
     margin: 0;
     padding: 15px;
-    border-radius: 5px;
-    min-width: 300px !important;
-    max-width: 750px !important;
-    box-shadow: 0 1px 10px #0006;
+    border-radius: 14px;
+    min-width: 18rem !important;
+    max-width: 22rem !important;
+    border: 1px solid color-mix(in oklab, rgb(15 23 42) 10%, transparent);
+    background: rgb(255 255 255);
+    color: rgb(15 23 42);
+    box-shadow: 0 20px 45px -18px rgb(15 23 42 / 0.35);
     z-index: 1000000000;
     position: fixed;
     top: 0;
@@ -70,25 +73,80 @@
     left: -16px;
 }
 
-@layer utilities {
+.driver-popover-title {
+    color: inherit;
+}
 
-    .dark .driver-popover-arrow {
-        border: 5px solid rgb(var(--gray-900)) !important;
-        border-right-color: #0000 !important;
-        border-bottom-color: #0000 !important;
-        border-top-color: #0000 !important;
-    }
+.driver-popover-description {
+    color: color-mix(in oklab, currentColor 78%, transparent);
+}
 
-    .dark .driver-popover {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 15px;
-        border-radius: 5px;
-        box-shadow: 0 1px 10px #0006;
-        z-index: 1000000000;
-        position: fixed;
-        top: 0;
-        right: 0;
-    }
+.driver-popover-close-btn {
+    color: color-mix(in oklab, currentColor 45%, transparent);
+}
 
+.driver-popover-close-btn:hover,
+.driver-popover-close-btn:focus {
+    color: inherit;
+}
+
+.driver-popover-footer {
+    gap: 0.75rem;
+}
+
+.driver-popover-footer button {
+    text-shadow: none;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, opacity 150ms ease;
+}
+
+.driver-popover-footer .driver-popover-next-btn {
+    border: 1px solid var(--primary-600);
+    background: var(--primary-600);
+    color: rgb(255 255 255);
+}
+
+.driver-popover-footer .driver-popover-next-btn:hover,
+.driver-popover-footer .driver-popover-next-btn:focus {
+    border-color: var(--primary-500);
+    background: var(--primary-500);
+}
+
+.driver-popover-footer .driver-popover-prev-btn {
+    border: 1px solid color-mix(in oklab, rgb(15 23 42) 12%, transparent);
+    background: rgb(255 255 255);
+    color: rgb(15 23 42);
+}
+
+.driver-popover-footer .driver-popover-prev-btn:hover,
+.driver-popover-footer .driver-popover-prev-btn:focus {
+    background: rgb(248 250 252);
+}
+
+.driver-popover.driver-popover-dark .driver-popover-arrow,
+.driver-popover-arrow.driver-popover-arrow-dark {
+    border: 5px solid rgb(15 23 42) !important;
+    border-right-color: #0000 !important;
+    border-bottom-color: #0000 !important;
+    border-top-color: #0000 !important;
+}
+
+.driver-popover.driver-popover-dark {
+    border-color: color-mix(in oklab, rgb(255 255 255) 12%, transparent) !important;
+    background: rgb(15 23 42) !important;
+    color: rgb(248 250 252) !important;
+    box-shadow: 0 24px 50px -20px rgb(0 0 0 / 0.65) !important;
+}
+
+.driver-popover.driver-popover-dark .driver-popover-prev-btn {
+    border-color: color-mix(in oklab, rgb(255 255 255) 14%, transparent);
+    background: rgb(30 41 59);
+    color: rgb(248 250 252);
+}
+
+.driver-popover.driver-popover-dark .driver-popover-prev-btn:hover,
+.driver-popover.driver-popover-dark .driver-popover-prev-btn:focus {
+    background: rgb(51 65 85);
 }

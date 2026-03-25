@@ -40,6 +40,32 @@ document.addEventListener('livewire:initialized', async function () {
         return params;
     }
 
+    function waitForStepTarget(steps, callback) {
+        const selector = steps?.[0]?.element;
+
+        if (!selector) {
+            callback();
+
+            return;
+        }
+
+        let attempts = 0;
+        const maxAttempts = 40;
+
+        const poll = () => {
+            if (document.querySelector(selector) || attempts >= maxAttempts) {
+                callback();
+
+                return;
+            }
+
+            attempts += 1;
+            window.setTimeout(poll, 100);
+        };
+
+        poll();
+    }
+
     Livewire.dispatch('filament-tour::load-elements', {request: window.location})
 
     Livewire.on('filament-tour::loaded-elements', function (data) {
@@ -113,6 +139,8 @@ document.addEventListener('livewire:initialized', async function () {
                 overlayColor: localStorage.theme === 'light' ? highlight.colors.light : highlight.colors.dark,
 
                 onPopoverRender: (popover, {config, state}) => {
+                    const isDarkMode = document.documentElement.classList.contains('dark');
+
                     popover.title.innerHTML = "";
                     popover.title.innerHTML = state.activeStep.popover.title;
 
@@ -123,6 +151,20 @@ document.addEventListener('livewire:initialized', async function () {
                     let contentClasses = "dark:text-white fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mb-4";
 
                     popover.footer.parentElement.classList.add(...contentClasses.split(" "));
+                    popover.footer.parentElement.classList.toggle('driver-popover-dark', isDarkMode);
+                    popover.arrow.classList.toggle('driver-popover-arrow-dark', isDarkMode);
+
+                    if (isDarkMode) {
+                        popover.footer.parentElement.style.background = 'rgb(15 23 42)';
+                        popover.footer.parentElement.style.color = 'rgb(248 250 252)';
+                        popover.footer.parentElement.style.borderColor = 'color-mix(in oklab, rgb(255 255 255) 12%, transparent)';
+                        popover.footer.parentElement.style.boxShadow = '0 24px 50px -20px rgb(0 0 0 / 0.65)';
+                    } else {
+                        popover.footer.parentElement.style.background = '';
+                        popover.footer.parentElement.style.color = '';
+                        popover.footer.parentElement.style.borderColor = '';
+                        popover.footer.parentElement.style.boxShadow = '';
+                    }
                 },
             }).highlight(highlight);
 
@@ -226,6 +268,7 @@ document.addEventListener('livewire:initialized', async function () {
                     driverObj.moveNext();
                 }),
                 onPopoverRender: (popover, {config, state}) => {
+                    const isDarkMode = document.documentElement.classList.contains('dark');
 
                     if (state.activeStep.uncloseable || tour.uncloseable)
                         document.querySelector(".driver-popover-close-btn").remove();
@@ -242,6 +285,20 @@ document.addEventListener('livewire:initialized', async function () {
                     // popover.description.insertAdjacentHTML("beforeend", state.activeStep.popover.form);
 
                     popover.footer.parentElement.classList.add(...contentClasses.split(" "));
+                    popover.footer.parentElement.classList.toggle('driver-popover-dark', isDarkMode);
+                    popover.arrow.classList.toggle('driver-popover-arrow-dark', isDarkMode);
+
+                    if (isDarkMode) {
+                        popover.footer.parentElement.style.background = 'rgb(15 23 42)';
+                        popover.footer.parentElement.style.color = 'rgb(248 250 252)';
+                        popover.footer.parentElement.style.borderColor = 'color-mix(in oklab, rgb(255 255 255) 12%, transparent)';
+                        popover.footer.parentElement.style.boxShadow = '0 24px 50px -20px rgb(0 0 0 / 0.65)';
+                    } else {
+                        popover.footer.parentElement.style.background = '';
+                        popover.footer.parentElement.style.color = '';
+                        popover.footer.parentElement.style.borderColor = '';
+                        popover.footer.parentElement.style.boxShadow = '';
+                    }
 
                     popover.footer.innerHTML = "";
                     popover.footer.classList.add('flex', 'mt-3');
@@ -251,19 +308,22 @@ document.addEventListener('livewire:initialized', async function () {
 
 
                     const nextButton = document.createElement("button");
-                    let nextClasses = "fi-btn fi-btn-size-md relative grid-flow-col items-center justify-center font-semibold outline-none transition duration-75 focus:ring-2 disabled:pointer-events-none disabled:opacity-70 rounded-lg fi-btn-color-primary gap-1.5 px-3 py-2 text-sm inline-grid shadow-sm bg-custom-600 text-white hover:bg-custom-500 dark:bg-custom-500 dark:hover:bg-custom-400 focus:ring-custom-500/50 dark:focus:ring-custom-400/50 fi-ac-btn-action";
+                    let nextClasses = "fi-color fi-color-primary fi-bg-color-400 hover:fi-bg-color-300 dark:fi-bg-color-600 dark:hover:fi-bg-color-700 fi-text-color-800 hover:fi-text-color-800 dark:fi-text-color-0 dark:hover:fi-text-color-0 fi-btn fi-size-md fi-ac-btn-action";
 
                     nextButton.classList.add(...nextClasses.split(" "), 'driver-popover-next-btn');
                     nextButton.innerText = driverObj.isLastStep() ? tour.doneButtonLabel : tour.nextButtonLabel;
 
-                    nextButton.style.setProperty('--c-400', 'var(--primary-400');
-                    nextButton.style.setProperty('--c-500', 'var(--primary-500');
-                    nextButton.style.setProperty('--c-600', 'var(--primary-600');
 
                     const prevButton = document.createElement("button");
                     let prevClasses = "fi-btn fi-btn-size-md relative grid-flow-col items-center justify-center font-semibold outline-none transition duration-75 focus:ring-2 disabled:pointer-events-none disabled:opacity-70 rounded-lg fi-btn-color-gray gap-1.5 px-3 py-2 text-sm inline-grid shadow-sm bg-white text-gray-950 hover:bg-gray-50 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 ring-1 ring-gray-950/10 dark:ring-white/20 fi-ac-btn-action";
                     prevButton.classList.add(...prevClasses.split(" "), 'driver-popover-prev-btn');
                     prevButton.innerText = tour.previousButtonLabel;
+
+                    if (isDarkMode) {
+                        prevButton.style.background = 'rgb(30 41 59)';
+                        prevButton.style.color = 'rgb(248 250 252)';
+                        prevButton.style.borderColor = 'color-mix(in oklab, rgb(255 255 255) 14%, transparent)';
+                    }
 
                     if (!driverObj.isFirstStep()) {
                         popover.footer.appendChild(prevButton);
@@ -273,7 +333,9 @@ document.addEventListener('livewire:initialized', async function () {
                 steps: steps,
             });
 
-            driverObj.drive();
+            waitForStepTarget(steps, () => {
+                driverObj.drive();
+            });
         }
     }
 });
