@@ -36,9 +36,6 @@
 .driver-popover-arrow-side-left.driver-popover-arrow-align-center,.driver-popover-arrow-side-right.driver-popover-arrow-align-center{top:50%;margin-top:-5px}
 .driver-popover-arrow-side-top.driver-popover-arrow-align-center,.driver-popover-arrow-side-bottom.driver-popover-arrow-align-center{left:50%;margin-left:-5px}
 .driver-popover-arrow-none{display:none}
-.hidden {
-    display: none !important;
-}
 #circle-cursor {
     pointer-events: none;
     cursor: crosshair;

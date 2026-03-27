@@ -3,10 +3,6 @@
    from the host Filament panel's own Tailwind build. */
 @import "driver.js/dist/driver.css";
 
-.hidden {
-    display: none !important;
-}
-
 #circle-cursor {
     pointer-events: none;
     cursor: crosshair;
