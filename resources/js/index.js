@@ -213,7 +213,9 @@ document.addEventListener('livewire:initialized', async function () {
                     }
                 }),
                 onDestroyed: ((element, step, {config, state}) => {
-
+                    if (pluginData.dismiss_on_overlay_click && !localStorage.getItem('tours').includes(tour.id)) {
+                        localStorage.setItem('tours', JSON.stringify([...JSON.parse(localStorage.getItem('tours')), tour.id]));
+                    }
                 }),
                 onNextClick: ((element, step, {config, state}) => {
 

@@ -60,6 +60,7 @@ class FilamentTourWidget extends Component
 
         $this->dispatch('filament-tour::loaded-elements',
             only_visible_once: FilamentTourPlugin::get()->getHistoryType() == 'local_storage' && (is_bool(FilamentTourPlugin::get()->isOnlyVisibleOnce()) ? FilamentTourPlugin::get()->isOnlyVisibleOnce() : config('filament-tour.only_visible_once')),
+            dismiss_on_overlay_click: config('filament-tour.dismiss_on_overlay_click', false),
             tours: $this->tours,
             highlights: $this->highlights,
         );
