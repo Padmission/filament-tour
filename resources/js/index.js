@@ -66,6 +66,20 @@ document.addEventListener('livewire:initialized', async function () {
         poll();
     }
 
+    function moveToNextStepWhenReady(driverObj, steps) {
+        const nextStep = steps?.[driverObj.getActiveIndex() + 1];
+
+        if (!nextStep?.element) {
+            driverObj.moveNext();
+
+            return;
+        }
+
+        waitForStepTarget([nextStep], () => {
+            driverObj.moveNext();
+        });
+    }
+
     Livewire.dispatch('filament-tour::load-elements', {request: window.location})
 
     Livewire.on('filament-tour::loaded-elements', function (data) {
@@ -258,7 +272,7 @@ document.addEventListener('livewire:initialized', async function () {
                         }
 
                         if (step.events.clickOnNext) {
-                            document.querySelector(step.events.clickOnNext).click();
+                            document.querySelector(step.events.clickOnNext)?.click();
                         }
 
                         if (step.events.redirectOnNext) {
@@ -267,7 +281,7 @@ document.addEventListener('livewire:initialized', async function () {
                     }
 
 
-                    driverObj.moveNext();
+                    moveToNextStepWhenReady(driverObj, steps);
                 }),
                 onPopoverRender: (popover, {config, state}) => {
                     const isDarkMode = document.documentElement.classList.contains('dark');
