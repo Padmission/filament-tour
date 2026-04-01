@@ -98,7 +98,7 @@ document.addEventListener('livewire:initialized', async function () {
 
         pluginData.highlights.forEach((highlight) => {
 
-            if (highlight.route === window.location.pathname) {
+            if (routeMatchesPattern(highlight.route, window.location.pathname)) {
 
                 //TODO Add a more precise/efficient selector
 
@@ -118,12 +118,19 @@ document.addEventListener('livewire:initialized', async function () {
         });
     });
 
+    function routeMatchesPattern(pattern, pathname) {
+        if (pattern === pathname) return true;
+        if (!pattern.includes('{')) return false;
+        const regexStr = '^' + pattern.replace(/\{[^}]+\}/g, '[^/]+') + '$';
+        return new RegExp(regexStr).test(pathname);
+    }
+
     function selectTour(tours, startIndex = 0) {
         for (let i = startIndex; i < tours.length; i++) {
             let tour = tours[i];
             let conditionAlwaysShow = tour.alwaysShow;
             let conditionRoutesIgnored = tour.routesIgnored;
-            let conditionRouteMatches = tour.route === window.location.pathname;
+            let conditionRouteMatches = routeMatchesPattern(tour.route, window.location.pathname);
             let conditionVisibleOnce = !pluginData.only_visible_once ||
                 (pluginData.only_visible_once && !localStorage.getItem('tours').includes(tour.id));
 
