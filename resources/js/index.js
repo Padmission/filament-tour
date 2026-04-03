@@ -125,6 +125,113 @@ document.addEventListener('livewire:initialized', async function () {
         return new RegExp(regexStr).test(pathname);
     }
 
+    function getPopoverWidthClasses() {
+        return [
+            'fi-width-xs',
+            'fi-width-sm',
+            'fi-width-md',
+            'fi-width-lg',
+            'fi-width-xl',
+            'fi-width-2xl',
+            'fi-width-3xl',
+            'fi-width-4xl',
+            'fi-width-5xl',
+            'fi-width-6xl',
+            'fi-width-7xl',
+            'fi-width-full',
+            'fi-width-min',
+            'fi-width-max',
+            'fi-width-fit',
+            'fi-width-prose',
+            'fi-width-screen-sm',
+            'fi-width-screen-md',
+            'fi-width-screen-lg',
+            'fi-width-screen-xl',
+            'fi-width-screen-2xl',
+            'fi-width-screen',
+        ];
+    }
+
+    function getPopoverWidthStyle(width) {
+        const constrainedWidth = (value) => `min(calc(100vw - 2rem), ${value})`;
+
+        switch (width) {
+            case 'xs':
+                return constrainedWidth('var(--container-xs)');
+            case 'sm':
+                return constrainedWidth('var(--container-sm)');
+            case 'md':
+                return constrainedWidth('var(--container-md)');
+            case 'lg':
+                return constrainedWidth('var(--container-lg)');
+            case 'xl':
+                return constrainedWidth('var(--container-xl)');
+            case '2xl':
+                return constrainedWidth('var(--container-2xl)');
+            case '3xl':
+                return constrainedWidth('var(--container-3xl)');
+            case '4xl':
+                return constrainedWidth('var(--container-4xl)');
+            case '5xl':
+                return constrainedWidth('var(--container-5xl)');
+            case '6xl':
+                return constrainedWidth('var(--container-6xl)');
+            case '7xl':
+                return constrainedWidth('var(--container-7xl)');
+            case 'full':
+            case 'screen':
+                return 'calc(100vw - 2rem)';
+            case 'min':
+                return 'min-content';
+            case 'max':
+                return constrainedWidth('max-content');
+            case 'fit':
+                return constrainedWidth('fit-content');
+            case 'prose':
+                return constrainedWidth('65ch');
+            case 'screen-sm':
+                return constrainedWidth('var(--breakpoint-sm)');
+            case 'screen-md':
+                return constrainedWidth('var(--breakpoint-md)');
+            case 'screen-lg':
+                return constrainedWidth('var(--breakpoint-lg)');
+            case 'screen-xl':
+                return constrainedWidth('var(--breakpoint-xl)');
+            case 'screen-2xl':
+                return constrainedWidth('var(--breakpoint-2xl)');
+            default:
+                return null;
+        }
+    }
+
+    function applyPopoverWidth(popover, width) {
+        const wrapper = popover.footer?.parentElement;
+
+        if (!wrapper) {
+            return;
+        }
+
+        wrapper.classList.remove(...getPopoverWidthClasses());
+        wrapper.style.removeProperty('width');
+        wrapper.style.removeProperty('max-width');
+
+        if (!width) {
+            return;
+        }
+
+        wrapper.classList.add(`fi-width-${width}`);
+
+        const widthStyle = getPopoverWidthStyle(width);
+
+        if (!widthStyle) {
+            return;
+        }
+
+        // The package CSS sets a default max-width with !important, so widths must override it the same way.
+        wrapper.style.setProperty('width', widthStyle, 'important');
+        wrapper.style.setProperty('max-width', widthStyle, 'important');
+    }
+
     function selectTour(tours, startIndex = 0) {
         for (let i = startIndex; i < tours.length; i++) {
             let tour = tours[i];
@@ -186,6 +293,8 @@ document.addEventListener('livewire:initialized', async function () {
                         popover.footer.parentElement.style.borderColor = '';
                         popover.footer.parentElement.style.boxShadow = '';
                     }
+
+                    applyPopoverWidth(popover, state.activeStep.popover.width);
                 },
             }).highlight(highlight);
 
@@ -212,6 +321,9 @@ document.addEventListener('livewire:initialized', async function () {
         let steps = JSON.parse(tour.steps);
 
         if (steps.length > 0) {
+            const previewStartIndex = Number.isFinite(Number(tour.previewStartIndex))
+                ? Number(tour.previewStartIndex)
+                : 0;
 
             const driverObj = driver({
                 allowClose: true,
@@ -323,6 +435,8 @@ document.addEventListener('livewire:initialized', async function () {
                         popover.footer.parentElement.style.boxShadow = '';
                     }
 
+                    applyPopoverWidth(popover, state.activeStep.popover.width);
+
                     popover.footer.innerHTML = "";
                     popover.footer.classList.add('flex', 'mt-3');
                     popover.footer.style.justifyContent = 'space-evenly';
@@ -357,7 +471,7 @@ document.addEventListener('livewire:initialized', async function () {
             });
 
             waitForStepTarget(steps, () => {
-                driverObj.drive();
+                driverObj.drive(previewStartIndex);
             });
         }
     }
