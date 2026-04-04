@@ -19,7 +19,7 @@ class PopoverDescriptionFormatter
                 $paragraph = preg_replace('/\h*\n\h*/u', ' ', $paragraph) ?? $paragraph;
                 $paragraph = preg_replace('/[^\S\n]+/u', ' ', $paragraph) ?? $paragraph;
 
-                return '<p>' . e(trim($paragraph)) . '</p>';
+                return '<p>'.e(trim($paragraph)).'</p>';
             })
             ->values();
 
