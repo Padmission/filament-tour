@@ -40,44 +40,154 @@ document.addEventListener('livewire:initialized', async function () {
         return params;
     }
 
-    function waitForStepTarget(steps, callback) {
-        const selector = steps?.[0]?.element;
+    function resolveStepElement(step) {
+        const target = step?.element;
 
-        if (!selector) {
-            callback();
-
-            return;
+        if (!target) {
+            return null;
         }
 
-        let attempts = 0;
-        const maxAttempts = 40;
+        if (typeof target === 'function') {
+            try {
+                return target() ?? null;
+            } catch {
+                return null;
+            }
+        }
 
-        const poll = () => {
-            if (document.querySelector(selector) || attempts >= maxAttempts) {
-                callback();
+        if (target instanceof Element) {
+            return target;
+        }
+
+        if (typeof target !== 'string') {
+            return null;
+        }
+
+        try {
+            return document.querySelector(target);
+        } catch {
+            return null;
+        }
+    }
+
+    function getReachableStepIndices(steps) {
+        return steps.flatMap((step, index) => {
+            if (!step?.element || resolveStepElement(step)) {
+                return [index];
+            }
+
+            return [];
+        });
+    }
+
+    function findNextReachableStepIndex(reachableStepIndices, currentIndex) {
+        for (const index of reachableStepIndices) {
+            if (index > currentIndex) {
+                return index;
+            }
+        }
+
+        return null;
+    }
+
+    function findPreviousReachableStepIndex(reachableStepIndices, currentIndex) {
+        for (let i = reachableStepIndices.length - 1; i >= 0; i -= 1) {
+            if (reachableStepIndices[i] < currentIndex) {
+                return reachableStepIndices[i];
+            }
+        }
+
+        return null;
+    }
+
+    function findStartStepIndex(reachableStepIndices, previewStartIndex) {
+        for (const index of reachableStepIndices) {
+            if (index >= previewStartIndex) {
+                return index;
+            }
+        }
+
+        if (previewStartIndex <= 0) {
+            return reachableStepIndices[0] ?? null;
+        }
+
+        for (let i = reachableStepIndices.length - 1; i >= 0; i -= 1) {
+            if (reachableStepIndices[i] < previewStartIndex) {
+                return reachableStepIndices[i];
+            }
+        }
+
+        return null;
+    }
+
+    function refreshReachableStepIndices(steps) {
+        const reachableStepIndices = getReachableStepIndices(steps);
+
+        if (reachableStepIndices.length > 0) {
+            return reachableStepIndices;
+        }
+
+        const centeredStepIndices = steps.flatMap((step, index) => step?.element ? [] : [index]);
+
+        if (centeredStepIndices.length > 0) {
+            return centeredStepIndices;
+        }
+
+        return [];
+    }
+
+    function queueStepRefresh(callback) {
+        window.requestAnimationFrame(() => {
+            callback();
+        });
+    }
+
+    function goToNextReachableStep(driverObj, steps, currentIndex, onTourComplete) {
+        queueStepRefresh(() => {
+            const reachableStepIndices = refreshReachableStepIndices(steps);
+            const nextIndex = findNextReachableStepIndex(reachableStepIndices, currentIndex);
+
+            if (nextIndex === null) {
+                onTourComplete();
 
                 return;
             }
 
-            attempts += 1;
-            window.setTimeout(poll, 100);
-        };
-
-        poll();
+            driverObj.moveTo(nextIndex);
+        });
     }
 
-    function moveToNextStepWhenReady(driverObj, steps) {
-        const nextStep = steps?.[driverObj.getActiveIndex() + 1];
+    function goToPreviousReachableStep(driverObj, steps, currentIndex) {
+        queueStepRefresh(() => {
+            const reachableStepIndices = refreshReachableStepIndices(steps);
+            const previousIndex = findPreviousReachableStepIndex(reachableStepIndices, currentIndex);
 
-        if (!nextStep?.element) {
-            driverObj.moveNext();
+            if (previousIndex === null) {
+                return;
+            }
 
+            driverObj.moveTo(previousIndex);
+        });
+    }
+
+    function getStepNavigationState(steps, activeIndex) {
+        const reachableStepIndices = refreshReachableStepIndices(steps);
+
+        return {
+            previousIndex: findPreviousReachableStepIndex(reachableStepIndices, activeIndex),
+            nextIndex: findNextReachableStepIndex(reachableStepIndices, activeIndex),
+        };
+    }
+
+    function driveFirstReachableStep(driverObj, steps, previewStartIndex) {
+        const reachableStepIndices = refreshReachableStepIndices(steps);
+        const startIndex = findStartStepIndex(reachableStepIndices, previewStartIndex);
+
+        if (startIndex === null) {
             return;
         }
 
-        waitForStepTarget([nextStep], () => {
-            driverObj.moveNext();
-        });
+        driverObj.drive(startIndex);
     }
 
     Livewire.dispatch('filament-tour::load-elements', {request: window.location})
@@ -232,6 +342,26 @@ document.addEventListener('livewire:initialized', async function () {
         wrapper.style.setProperty('max-width', widthStyle, 'important');
     }
 
+    function markTourSeen(tour) {
+        if (!localStorage.getItem('tours').includes(tour.id)) {
+            localStorage.setItem('tours', JSON.stringify([...JSON.parse(localStorage.getItem('tours')), tour.id]));
+        }
+    }
+
+    function openNextTourIfAvailable(currentTour) {
+        if (tours.length <= 1) {
+            return;
+        }
+
+        const index = tours.findIndex((tour) => tour.id === currentTour.id);
+
+        if (index === -1 || index >= tours.length - 1) {
+            return;
+        }
+
+        selectTour(tours, index + 1);
+    }
+
     function selectTour(tours, startIndex = 0) {
         for (let i = startIndex; i < tours.length; i++) {
             let tour = tours[i];
@@ -336,9 +466,7 @@ document.addEventListener('livewire:initialized', async function () {
                     if (state.activeStep && (!state.activeStep.uncloseable || tour.uncloseable))
                         driverObj.destroy();
 
-                    if (!localStorage.getItem('tours').includes(tour.id)) {
-                        localStorage.setItem('tours', JSON.stringify([...JSON.parse(localStorage.getItem('tours')), tour.id]));
-                    }
+                    markTourSeen(tour);
                 }),
                 onDestroyStarted: ((element, step, {config, state}) => {
                     if (state.activeStep && !state.activeStep.uncloseable && !tour.uncloseable) {
@@ -347,32 +475,10 @@ document.addEventListener('livewire:initialized', async function () {
                 }),
                 onDestroyed: ((element, step, {config, state}) => {
                     if (pluginData.dismiss_on_overlay_click && !localStorage.getItem('tours').includes(tour.id)) {
-                        localStorage.setItem('tours', JSON.stringify([...JSON.parse(localStorage.getItem('tours')), tour.id]));
+                        markTourSeen(tour);
                     }
                 }),
                 onNextClick: ((element, step, {config, state}) => {
-
-
-                    if (tours.length > 1 && driverObj.isLastStep()) {
-                        let index = tours.findIndex(objet => objet.id === tour.id);
-
-                        if (index !== -1 && index < tours.length - 1) {
-                            let nextTourIndex = index + 1;
-                            selectTour(tours, nextTourIndex);
-                        }
-                    }
-
-
-                    if (driverObj.isLastStep()) {
-
-                        if (!localStorage.getItem('tours').includes(tour.id)) {
-                            localStorage.setItem('tours', JSON.stringify([...JSON.parse(localStorage.getItem('tours')), tour.id]));
-                        }
-
-                        driverObj.destroy();
-                    }
-
-
                     if (step.events) {
 
                         if (step.events.notifyOnNext) {
@@ -399,11 +505,26 @@ document.addEventListener('livewire:initialized', async function () {
                         }
                     }
 
+                    const currentIndex = driverObj.getActiveIndex() ?? 0;
 
-                    moveToNextStepWhenReady(driverObj, steps);
+                    goToNextReachableStep(driverObj, steps, currentIndex, () => {
+                            markTourSeen(tour);
+                            driverObj.destroy();
+                            openNextTourIfAvailable(tour);
+                    });
+                }),
+                onPrevClick: ((element, step, {config, state}) => {
+                    const currentIndex = driverObj.getActiveIndex() ?? 0;
+
+                    goToPreviousReachableStep(driverObj, steps, currentIndex);
                 }),
                 onPopoverRender: (popover, {config, state}) => {
                     const isDarkMode = document.documentElement.classList.contains('dark');
+                    const activeIndex = driverObj.getActiveIndex() ?? 0;
+                    const {
+                        previousIndex: previousReachableStepIndex,
+                        nextIndex: nextReachableStepIndex,
+                    } = getStepNavigationState(steps, activeIndex);
 
                     if (state.activeStep.uncloseable || tour.uncloseable)
                         document.querySelector(".driver-popover-close-btn").remove();
@@ -448,7 +569,7 @@ document.addEventListener('livewire:initialized', async function () {
                     let nextClasses = "fi-color fi-color-primary fi-bg-color-400 hover:fi-bg-color-300 dark:fi-bg-color-600 dark:hover:fi-bg-color-700 fi-text-color-800 hover:fi-text-color-800 dark:fi-text-color-0 dark:hover:fi-text-color-0 fi-btn fi-size-md fi-ac-btn-action";
 
                     nextButton.classList.add(...nextClasses.split(" "), 'driver-popover-next-btn');
-                    nextButton.innerText = driverObj.isLastStep() ? tour.doneButtonLabel : tour.nextButtonLabel;
+                    nextButton.innerText = nextReachableStepIndex === null ? tour.doneButtonLabel : tour.nextButtonLabel;
 
 
                     const prevButton = document.createElement("button");
@@ -462,7 +583,7 @@ document.addEventListener('livewire:initialized', async function () {
                         prevButton.style.borderColor = 'color-mix(in oklab, rgb(255 255 255) 14%, transparent)';
                     }
 
-                    if (!driverObj.isFirstStep()) {
+                    if (previousReachableStepIndex !== null) {
                         popover.footer.appendChild(prevButton);
                     }
                     popover.footer.appendChild(nextButton);
@@ -470,9 +591,7 @@ document.addEventListener('livewire:initialized', async function () {
                 steps: steps,
             });
 
-            waitForStepTarget(steps, () => {
-                driverObj.drive(previewStartIndex);
-            });
+            driveFirstReachableStep(driverObj, steps, previewStartIndex);
         }
     }
 });
