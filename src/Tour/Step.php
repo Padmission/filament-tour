@@ -8,6 +8,7 @@ use Filament\Notifications\Notification;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\View;
+use JibayMcs\FilamentTour\Support\PopoverDescriptionFormatter;
 use JibayMcs\FilamentTour\Tour\Step\StepEvent;
 use Throwable;
 
@@ -98,14 +99,18 @@ class Step
     public function description(string|Closure|HtmlString|View $description): self
     {
         try {
-            if (is_callable($description)) {
-                $this->description = $this->evaluate($description);
-            } elseif (method_exists($description, 'toHtml')) {
-                $this->description = $description->toHtml();
-            } elseif (method_exists($description, 'render')) {
-                $this->description = $description->render();
+            $resolvedDescription = is_callable($description)
+                ? $this->evaluate($description)
+                : $description;
+
+            if (is_string($resolvedDescription)) {
+                $this->description = PopoverDescriptionFormatter::format($resolvedDescription);
+            } elseif (method_exists($resolvedDescription, 'toHtml')) {
+                $this->description = $resolvedDescription->toHtml();
+            } elseif (method_exists($resolvedDescription, 'render')) {
+                $this->description = $resolvedDescription->render();
             } else {
-                $this->description = $description;
+                $this->description = $resolvedDescription;
             }
         } catch (Throwable $e) {
             throw new Exception("Unable to evaluate description.\n{$e->getMessage()}");

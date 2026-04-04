@@ -9,6 +9,12 @@ With the power of [DriverJS](https://driverjs.com) bring to your users an elegan
 
 You can install this filament plugin via composer:
 
+For Filament V5.x
+
+```bash
+composer require jibaymcs/filament-tour:"^5.0"
+```
+
 For Filament V4.x
 
 ```bash
@@ -44,7 +50,11 @@ This is the contents of the published config file:
 
 ```php
  return [    
-    "only_visible_once" => true,  
+	    "only_visible_once" => true,  
+        "enable_css_selector" => false,
+        "dismiss_on_overlay_click" => false,
+        "tour_prefix_id" => "tour_",
+        "highlight_prefix_id" => "highlight_",
 ];
 ```
 
@@ -66,6 +76,26 @@ You can also enable or disable the check on the local storage if the current use
 // default  : true  
 FilamentTourPlugin::make()->onlyVisibleOnce(false)  
 ```
+
+You can also enable the built-in CSS selector helper and control how overlay clicks affect dismissed-tour history:
+
+```php
+FilamentTourPlugin::make()
+    ->onlyVisibleOnce(true)
+    ->enableCssSelector()
+```
+
+```php
+// config/filament-tour.php
+return [
+    'dismiss_on_overlay_click' => false,
+];
+```
+
+`dismiss_on_overlay_click` changes the behavior of clicking outside the popover:
+
+- `false` (default): closes the tour for the current page view only
+- `true`: dismisses the tour permanently, the same as clicking the close button
 
 # Start a tour !
 
@@ -115,8 +145,18 @@ public function tours(): array {
                    ->iconColor('primary')
            ),
     ];
-}
+	}
 ```
+
+Plain string descriptions are treated as plain text. Use a blank line to start a new paragraph:
+
+```php
+Step::make('.fi-avatar')
+    ->title('Welcome')
+    ->description("First sentence.\nSecond sentence.\n\nNew paragraph.")
+```
+
+That renders as two paragraphs in the popover. If you need full control over the markup, pass an `HtmlString` or a Blade view instead.
 
 ### Displaying your tour !
 
@@ -166,6 +206,15 @@ public function renderPostTour(bool $only_visible_once, array $tours, array $hig
 ```
 
 You can also bring up tours for users when they click on a button. See more in the (Event)[#events] section.
+
+Routes can also use placeholders for record-specific pages. For example:
+
+```php
+Tour::make('edit-post')
+    ->route('/admin/posts/{record}/edit')
+```
+
+This lets one tour match URLs such as `/admin/posts/1/edit` and `/admin/posts/42/edit`.
 
 ### Create a JSON tour !
 
@@ -542,4 +591,3 @@ Please review [our security policy](../../security/policy) on how to report secu
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
-

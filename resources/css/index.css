@@ -73,6 +73,14 @@
     color: color-mix(in oklab, currentColor 78%, transparent);
 }
 
+.driver-popover-description p {
+    margin: 0;
+}
+
+.driver-popover-description p + p {
+    margin-top: 0.75rem;
+}
+
 .driver-popover-close-btn {
     color: color-mix(in oklab, currentColor 45%, transparent);
 }
