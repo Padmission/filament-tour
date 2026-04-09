@@ -79,7 +79,7 @@ class FilamentTourPlugin implements Plugin
     public function autoStartTours(bool|Closure $condition = true): self
     {
         $this->autoStartTours = $condition;
-        static::$resolvedAutoStartTours = $condition;
+        self::$resolvedAutoStartTours = $condition;
 
         return $this;
     }
@@ -91,7 +91,7 @@ class FilamentTourPlugin implements Plugin
 
     public static function resolveAutoStartTours(): bool
     {
-        $value = static::$resolvedAutoStartTours;
+        $value = self::$resolvedAutoStartTours;
 
         if ($value instanceof Closure) {
             return (bool) app(static::class)->evaluate($value);
