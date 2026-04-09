@@ -16,6 +16,10 @@ class FilamentTourPlugin implements Plugin
 
     private ?bool $enableCssSelector = null;
 
+    private bool | Closure $autoStartTours = true;
+
+    private static bool | Closure $resolvedAutoStartTours = true;
+
     private string $historyType = 'local_storage';
 
     public static function make(): static
@@ -70,6 +74,30 @@ class FilamentTourPlugin implements Plugin
     public function isCssSelectorEnabled(): ?bool
     {
         return $this->enableCssSelector;
+    }
+
+    public function autoStartTours(bool | Closure $condition = true): self
+    {
+        $this->autoStartTours = $condition;
+        static::$resolvedAutoStartTours = $condition;
+
+        return $this;
+    }
+
+    public function shouldAutoStartTours(): bool
+    {
+        return (bool) $this->evaluate($this->autoStartTours);
+    }
+
+    public static function resolveAutoStartTours(): bool
+    {
+        $value = static::$resolvedAutoStartTours;
+
+        if ($value instanceof Closure) {
+            return (bool) app(static::class)->evaluate($value);
+        }
+
+        return (bool) $value;
     }
 
     public function historyType(string $type): self

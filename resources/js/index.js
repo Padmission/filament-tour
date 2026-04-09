@@ -204,7 +204,9 @@ document.addEventListener('livewire:initialized', async function () {
             }
         });
 
-        selectTour(tours);
+        if (pluginData.auto_start_tours !== false) {
+            selectTour(tours);
+        }
 
         pluginData.highlights.forEach((highlight) => {
 
