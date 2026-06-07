@@ -29,6 +29,12 @@ class Step
 
     private bool $uncloseable = false;
 
+    private bool $interactive = false;
+
+    private string $continueEvent = 'click';
+
+    private ?string $continueSelector = null;
+
     public function __construct(?string $element = null)
     {
         $this->element = $element;
@@ -45,6 +51,10 @@ class Step
         $app->icon($step['icon'] ?? null);
         $app->iconColor($step['iconColor'] ?? null);
         $app->uncloseable($step['uncloseable'] ?? false);
+
+        if ($step['interactive'] ?? false) {
+            $app->interactive($step['continueEvent'] ?? 'click', $step['continueSelector'] ?? null);
+        }
 
         if ($step['events']['dispatchOnNext']) {
             $app->dispatchOnNext($step['events']['dispatchOnNext'][0], ...$step['events']['dispatchOnNext'][1]);
@@ -160,6 +170,22 @@ class Step
     }
 
     /**
+     * Make this step hands-on: the highlighted element stays interactive, the Next button is replaced
+     * with a small Skip, and the tour only advances when the user performs the action ($event on
+     * $selector, defaulting to the step's own element).
+     *
+     * @return $this
+     */
+    public function interactive(string $event = 'click', ?string $selector = null): self
+    {
+        $this->interactive = true;
+        $this->continueEvent = $event;
+        $this->continueSelector = $selector;
+
+        return $this;
+    }
+
+    /**
      * Create the instance of your step.
      * <br>
      * If no **$element** defined, the step will be shown as a modal.
@@ -197,5 +223,20 @@ class Step
     public function isUncloseable(): bool
     {
         return $this->uncloseable;
+    }
+
+    public function isInteractive(): bool
+    {
+        return $this->interactive;
+    }
+
+    public function getContinueEvent(): string
+    {
+        return $this->continueEvent;
+    }
+
+    public function getContinueSelector(): ?string
+    {
+        return $this->continueSelector;
     }
 }

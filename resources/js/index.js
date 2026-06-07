@@ -462,7 +462,10 @@ document.addEventListener('livewire:initialized', async function () {
                 disableActiveInteraction: true,
                 overlayColor: localStorage.theme === 'light' ? tour.colors.light : tour.colors.dark,
                 onDeselected: ((element, step, {config, state}) => {
-
+                    driverObj.__clearInteractive?.();
+                }),
+                onHighlighted: ((element, step, {config, state}) => {
+                    driverObj.__attachInteractive?.(element, state.activeStep);
                 }),
                 onCloseClick: ((element, step, {config, state}) => {
                     if (state.activeStep && (!state.activeStep.uncloseable || tour.uncloseable))
@@ -481,39 +484,9 @@ document.addEventListener('livewire:initialized', async function () {
                     }
                 }),
                 onNextClick: ((element, step, {config, state}) => {
-                    if (step.events) {
-
-                        if (step.events.notifyOnNext) {
-                            new FilamentNotification()
-                                .title(step.events.notifyOnNext.title)
-                                .body(step.events.notifyOnNext.body)
-                                .icon(step.events.notifyOnNext.icon)
-                                .iconColor(step.events.notifyOnNext.iconColor)
-                                .color(step.events.notifyOnNext.color)
-                                .duration(step.events.notifyOnNext.duration)
-                                .send();
-                        }
-
-                        if (step.events.dispatchOnNext) {
-                            Livewire.dispatch(step.events.dispatchOnNext.name, step.events.dispatchOnNext.params);
-                        }
-
-                        if (step.events.clickOnNext) {
-                            document.querySelector(step.events.clickOnNext)?.click();
-                        }
-
-                        if (step.events.redirectOnNext) {
-                            window.open(step.events.redirectOnNext.url, step.events.redirectOnNext.newTab ? '_blank' : '_self');
-                        }
-                    }
-
-                    const currentIndex = driverObj.getActiveIndex() ?? 0;
-
-                    goToNextReachableStep(driverObj, steps, currentIndex, () => {
-                            markTourSeen(tour);
-                            driverObj.destroy();
-                            openNextTourIfAvailable(tour);
-                    });
+                    // Skip (on an interactive step) and Next (on a passive step) both run the step's
+                    // events then advance; the helper is shared with the interactive action listener.
+                    driverObj.__advanceFromActiveStep(state.activeStep);
                 }),
                 onPrevClick: ((element, step, {config, state}) => {
                     const currentIndex = driverObj.getActiveIndex() ?? 0;
@@ -573,6 +546,19 @@ document.addEventListener('livewire:initialized', async function () {
                     nextButton.classList.add(...nextClasses.split(" "), 'driver-popover-next-btn');
                     nextButton.innerText = nextReachableStepIndex === null ? tour.doneButtonLabel : tour.nextButtonLabel;
 
+                    // On an interactive step the trainee must perform the action to advance; the
+                    // primary Next becomes a subtle Skip escape hatch instead of a call-to-action.
+                    if (state.activeStep.interactive) {
+                        nextButton.classList.remove(...nextClasses.split(" "));
+                        nextButton.classList.add('driver-popover-next-btn');
+                        nextButton.style.background = 'transparent';
+                        nextButton.style.boxShadow = 'none';
+                        nextButton.style.textDecoration = 'underline';
+                        nextButton.style.opacity = '0.7';
+                        nextButton.style.color = isDarkMode ? 'rgb(203 213 225)' : 'rgb(107 114 128)';
+                        nextButton.innerText = tour.skipButtonLabel || 'Skip';
+                    }
+
 
                     const prevButton = document.createElement("button");
                     let prevClasses = "fi-btn fi-btn-size-md relative grid-flow-col items-center justify-center font-semibold outline-none transition duration-75 focus:ring-2 disabled:pointer-events-none disabled:opacity-70 rounded-lg fi-btn-color-gray gap-1.5 px-3 py-2 text-sm inline-grid shadow-sm bg-white text-gray-950 hover:bg-gray-50 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 ring-1 ring-gray-950/10 dark:ring-white/20 fi-ac-btn-action";
@@ -592,6 +578,79 @@ document.addEventListener('livewire:initialized', async function () {
                 },
                 steps: steps,
             });
+
+            // --- Interactive ("do this") step support --------------------------------------------
+            // For steps flagged interactive the highlighted control stays usable (per-step
+            // disableActiveInteraction:false) and the tour only advances when the trainee actually
+            // performs the action. A single listener is attached per highlighted step and cleaned up
+            // when the step changes; the popover shows a subtle Skip instead of Next.
+            let interactiveCleanup = null;
+
+            const clearInteractive = () => {
+                if (interactiveCleanup) {
+                    interactiveCleanup();
+                    interactiveCleanup = null;
+                }
+            };
+
+            const completeTour = () => {
+                markTourSeen(tour);
+                driverObj.destroy();
+                openNextTourIfAvailable(tour);
+            };
+
+            const runStepEvents = (step) => {
+                if (!step || !step.events) {
+                    return;
+                }
+                if (step.events.notifyOnNext) {
+                    new FilamentNotification()
+                        .title(step.events.notifyOnNext.title)
+                        .body(step.events.notifyOnNext.body)
+                        .icon(step.events.notifyOnNext.icon)
+                        .iconColor(step.events.notifyOnNext.iconColor)
+                        .color(step.events.notifyOnNext.color)
+                        .duration(step.events.notifyOnNext.duration)
+                        .send();
+                }
+                if (step.events.dispatchOnNext) {
+                    Livewire.dispatch(step.events.dispatchOnNext.name, step.events.dispatchOnNext.params);
+                }
+                if (step.events.clickOnNext) {
+                    document.querySelector(step.events.clickOnNext)?.click();
+                }
+                if (step.events.redirectOnNext) {
+                    window.open(step.events.redirectOnNext.url, step.events.redirectOnNext.newTab ? '_blank' : '_self');
+                }
+            };
+
+            const advanceFromActiveStep = (step) => {
+                runStepEvents(step);
+                const currentIndex = driverObj.getActiveIndex() ?? 0;
+                goToNextReachableStep(driverObj, steps, currentIndex, completeTour);
+            };
+
+            const attachInteractive = (element, step) => {
+                clearInteractive();
+                if (!step || !step.interactive) {
+                    return;
+                }
+                const target = step.continueSelector ? document.querySelector(step.continueSelector) : element;
+                if (!target) {
+                    return;
+                }
+                const eventName = step.continueEvent || 'click';
+                const handler = () => {
+                    clearInteractive();
+                    advanceFromActiveStep(step);
+                };
+                target.addEventListener(eventName, handler);
+                interactiveCleanup = () => target.removeEventListener(eventName, handler);
+            };
+
+            driverObj.__advanceFromActiveStep = advanceFromActiveStep;
+            driverObj.__attachInteractive = attachInteractive;
+            driverObj.__clearInteractive = clearInteractive;
 
             driveFirstReachableStep(driverObj, steps, previewStartIndex);
         }
