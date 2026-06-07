@@ -60,6 +60,7 @@ trait HasTour
                         $data[$item]['interactive'] = true;
                         $data[$item]['continueEvent'] = $step->getContinueEvent();
                         $data[$item]['continueSelector'] = $step->getContinueSelector();
+                        $data[$item]['continueDelay'] = $step->getContinueDelay();
                         // Let the trainee actually use the highlighted control during this step.
                         $data[$item]['disableActiveInteraction'] = false;
                     }

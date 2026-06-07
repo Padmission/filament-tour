@@ -640,9 +640,16 @@ document.addEventListener('livewire:initialized', async function () {
                     return;
                 }
                 const eventName = step.continueEvent || 'click';
+                const delay = Number(step.continueDelay) || 0;
                 const handler = () => {
                     clearInteractive();
-                    advanceFromActiveStep(step);
+                    // Hold the popover briefly so the result of the action (e.g. an autofill) is
+                    // visible before the tour advances.
+                    if (delay > 0) {
+                        window.setTimeout(() => advanceFromActiveStep(step), delay);
+                    } else {
+                        advanceFromActiveStep(step);
+                    }
                 };
                 target.addEventListener(eventName, handler);
                 interactiveCleanup = () => target.removeEventListener(eventName, handler);

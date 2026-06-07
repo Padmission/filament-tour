@@ -35,6 +35,8 @@ class Step
 
     private ?string $continueSelector = null;
 
+    private int $continueDelay = 0;
+
     public function __construct(?string $element = null)
     {
         $this->element = $element;
@@ -53,7 +55,7 @@ class Step
         $app->uncloseable($step['uncloseable'] ?? false);
 
         if ($step['interactive'] ?? false) {
-            $app->interactive($step['continueEvent'] ?? 'click', $step['continueSelector'] ?? null);
+            $app->interactive($step['continueEvent'] ?? 'click', $step['continueSelector'] ?? null, $step['continueDelay'] ?? 0);
         }
 
         if ($step['events']['dispatchOnNext']) {
@@ -172,15 +174,17 @@ class Step
     /**
      * Make this step hands-on: the highlighted element stays interactive, the Next button is replaced
      * with a small Skip, and the tour only advances when the user performs the action ($event on
-     * $selector, defaulting to the step's own element).
+     * $selector, defaulting to the step's own element). $delay (ms) holds the popover briefly after
+     * the action so the result is visible before advancing.
      *
      * @return $this
      */
-    public function interactive(string $event = 'click', ?string $selector = null): self
+    public function interactive(string $event = 'click', ?string $selector = null, int $delay = 0): self
     {
         $this->interactive = true;
         $this->continueEvent = $event;
         $this->continueSelector = $selector;
+        $this->continueDelay = $delay;
 
         return $this;
     }
@@ -238,5 +242,10 @@ class Step
     public function getContinueSelector(): ?string
     {
         return $this->continueSelector;
+    }
+
+    public function getContinueDelay(): int
+    {
+        return $this->continueDelay;
     }
 }
