@@ -640,16 +640,12 @@ document.addEventListener('livewire:initialized', async function () {
                     return;
                 }
                 const eventName = step.continueEvent || 'click';
-                const delay = Number(step.continueDelay) || 0;
+                // Always hold the popover for at least a beat after the action so the result (e.g. a
+                // geocomplete autofill) is visible and the tour never feels like it jumps ahead.
+                const delay = Math.max(Number(step.continueDelay) || 0, 500);
                 const handler = () => {
                     clearInteractive();
-                    // Hold the popover briefly so the result of the action (e.g. an autofill) is
-                    // visible before the tour advances.
-                    if (delay > 0) {
-                        window.setTimeout(() => advanceFromActiveStep(step), delay);
-                    } else {
-                        advanceFromActiveStep(step);
-                    }
+                    window.setTimeout(() => advanceFromActiveStep(step), delay);
                 };
                 target.addEventListener(eventName, handler);
                 interactiveCleanup = () => target.removeEventListener(eventName, handler);
