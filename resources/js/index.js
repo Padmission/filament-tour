@@ -635,7 +635,8 @@ document.addEventListener('livewire:initialized', async function () {
                 if (!step || !step.interactive) {
                     return;
                 }
-                const target = step.continueSelector ? document.querySelector(step.continueSelector) : element;
+                const findTarget = () => step.continueSelector ? document.querySelector(step.continueSelector) : element;
+                const target = findTarget();
                 if (!target) {
                     return;
                 }
@@ -643,10 +644,34 @@ document.addEventListener('livewire:initialized', async function () {
                 // Always hold the popover for at least a beat after the action so the result (e.g. a
                 // geocomplete autofill) is visible and the tour never feels like it jumps ahead.
                 const delay = Math.max(Number(step.continueDelay) || 0, 500);
-                const handler = () => {
+                let advanced = false;
+                const advance = () => {
+                    if (advanced) {
+                        return;
+                    }
+                    advanced = true;
                     clearInteractive();
                     window.setTimeout(() => advanceFromActiveStep(step), delay);
                 };
+
+                // "filled": advance once the target has a value, however it was set — mouse, keyboard,
+                // or a programmatic autofill (e.g. a geocomplete). A DOM event alone misses keyboard
+                // selection, so poll the value instead.
+                if (eventName === 'filled') {
+                    const initial = (target.value || '').trim();
+                    const poll = window.setInterval(() => {
+                        const current = findTarget();
+                        const value = current ? (current.value || '').trim() : '';
+                        if (value !== '' && value !== initial) {
+                            advance();
+                        }
+                    }, 250);
+                    interactiveCleanup = () => window.clearInterval(poll);
+
+                    return;
+                }
+
+                const handler = () => advance();
                 target.addEventListener(eventName, handler);
                 interactiveCleanup = () => target.removeEventListener(eventName, handler);
             };
