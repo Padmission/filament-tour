@@ -26,6 +26,10 @@ class Tour
 
     private bool $uncloseable = false;
 
+    private bool $confirmClose = false;
+
+    private ?string $confirmCloseMessage = null;
+
     private bool $disableEvents = false;
 
     private bool $ignoreRoutes = false;
@@ -134,6 +138,21 @@ class Tour
     public function uncloseable(bool|Closure $uncloseable = true): self
     {
         $this->uncloseable = $this->evaluate($uncloseable);
+
+        return $this;
+    }
+
+    /**
+     * The tour can only be dismissed via the popover's close (×) button, which asks for confirmation
+     * first; an overlay click, the Escape key and the arrow keys do nothing. Use this for guided
+     * walkthroughs an accidental click must not abandon, while still giving a deliberate way out.
+     *
+     * @return $this
+     */
+    public function confirmClose(bool|Closure $confirmClose = true, ?string $message = null): self
+    {
+        $this->confirmClose = $this->evaluate($confirmClose);
+        $this->confirmCloseMessage = $message;
 
         return $this;
     }
@@ -259,6 +278,16 @@ class Tour
     public function isUncloseable(): bool
     {
         return $this->uncloseable;
+    }
+
+    public function isConfirmClose(): bool
+    {
+        return $this->confirmClose;
+    }
+
+    public function getConfirmCloseMessage(): ?string
+    {
+        return $this->confirmCloseMessage;
     }
 
     public function hasDisabledEvents(): bool

@@ -77,6 +77,9 @@ trait HasTour
 
                         'uncloseable' => $tour->isUncloseable(),
 
+                        'confirmClose' => $tour->isConfirmClose(),
+                        'confirmCloseMessage' => $tour->getConfirmCloseMessage(),
+
                         'route' => $route,
 
                         'id' => "{$prefixId}{$tour->getId()}",

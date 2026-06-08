@@ -509,6 +509,10 @@ document.addEventListener('livewire:initialized', async function () {
 
             const driverObj = driver({
                 allowClose: true,
+                // confirmClose tours can only be dismissed via the × (with confirmation), so disable
+                // keyboard control entirely — Escape must not close and the arrow keys must not let a
+                // trainee skip an interactive step they are meant to complete.
+                allowKeyboardControl: ! tour.confirmClose,
                 disableActiveInteraction: true,
                 overlayColor: localStorage.theme === 'light' ? tour.colors.light : tour.colors.dark,
                 onDeselected: ((element, step, {config, state}) => {
@@ -518,12 +522,29 @@ document.addEventListener('livewire:initialized', async function () {
                     driverObj.__attachInteractive?.(element, state.activeStep);
                 }),
                 onCloseClick: ((element, step, {config, state}) => {
+                    // The × is the deliberate way out of a confirmClose walkthrough — confirm first so a
+                    // stray click can't abandon it, then tear down (destroy() == g(false), no re-prompt).
+                    if (tour.confirmClose) {
+                        if (window.confirm(tour.confirmCloseMessage || 'End the walkthrough?')) {
+                            driverObj.destroy();
+                            markTourSeen(tour);
+                        }
+
+                        return;
+                    }
+
                     if (state.activeStep && (!state.activeStep.uncloseable || tour.uncloseable))
                         driverObj.destroy();
 
                     markTourSeen(tour);
                 }),
                 onDestroyStarted: ((element, step, {config, state}) => {
+                    // Overlay clicks (and any other implicit close) must do nothing for a confirmClose
+                    // walkthrough — only the confirmed × above closes it.
+                    if (tour.confirmClose) {
+                        return;
+                    }
+
                     if (state.activeStep && !state.activeStep.uncloseable && !tour.uncloseable) {
                         driverObj.destroy();
                     }
@@ -537,8 +558,8 @@ document.addEventListener('livewire:initialized', async function () {
                     }
                 }),
                 onNextClick: ((element, step, {config, state}) => {
-                    // Skip (on an interactive step) and Next (on a passive step) both run the step's
-                    // events then advance; the helper is shared with the interactive action listener.
+                    // Fired by a passive step's Next/Done button (interactive steps have no such button —
+                    // their gate advances them); runs the step's events then advances via the shared helper.
                     driverObj.__advanceFromActiveStep(state.activeStep);
                 }),
                 onPrevClick: ((element, step, {config, state}) => {
@@ -555,7 +576,7 @@ document.addEventListener('livewire:initialized', async function () {
                     } = getStepNavigationState(steps, activeIndex);
 
                     if (state.activeStep.uncloseable || tour.uncloseable)
-                        document.querySelector(".driver-popover-close-btn").remove();
+                        document.querySelector(".driver-popover-close-btn")?.remove();
 
                     popover.title.innerHTML = "";
                     popover.title.innerHTML = state.activeStep.popover.title;
@@ -593,23 +614,15 @@ document.addEventListener('livewire:initialized', async function () {
                     popover.footer.classList.remove("driver-popover-footer");
 
 
-                    const nextButton = document.createElement("button");
-                    let nextClasses = "fi-color fi-color-primary fi-bg-color-400 hover:fi-bg-color-300 dark:fi-bg-color-600 dark:hover:fi-bg-color-700 fi-text-color-800 hover:fi-text-color-800 dark:fi-text-color-0 dark:hover:fi-text-color-0 fi-btn fi-size-md fi-ac-btn-action";
-
-                    nextButton.classList.add(...nextClasses.split(" "), 'driver-popover-next-btn');
-                    nextButton.innerText = nextReachableStepIndex === null ? tour.doneButtonLabel : tour.nextButtonLabel;
-
-                    // On an interactive step the trainee must perform the action to advance; the
-                    // primary Next becomes a subtle Skip escape hatch instead of a call-to-action.
-                    if (state.activeStep.interactive) {
-                        nextButton.classList.remove(...nextClasses.split(" "));
-                        nextButton.classList.add('driver-popover-next-btn');
-                        nextButton.style.background = 'transparent';
-                        nextButton.style.boxShadow = 'none';
-                        nextButton.style.textDecoration = 'underline';
-                        nextButton.style.opacity = '0.7';
-                        nextButton.style.color = isDarkMode ? 'rgb(203 213 225)' : 'rgb(107 114 128)';
-                        nextButton.innerText = tour.skipButtonLabel || 'Skip';
+                    // An interactive step has NO Next/Skip button — the trainee must perform the action to
+                    // advance (a skip would leave the lesson incomplete). Only passive steps, where there
+                    // is no data to enter, get a Next/Done call-to-action.
+                    let nextButton = null;
+                    if (! state.activeStep.interactive) {
+                        nextButton = document.createElement("button");
+                        const nextClasses = "fi-color fi-color-primary fi-bg-color-400 hover:fi-bg-color-300 dark:fi-bg-color-600 dark:hover:fi-bg-color-700 fi-text-color-800 hover:fi-text-color-800 dark:fi-text-color-0 dark:hover:fi-text-color-0 fi-btn fi-size-md fi-ac-btn-action";
+                        nextButton.classList.add(...nextClasses.split(" "), 'driver-popover-next-btn');
+                        nextButton.innerText = nextReachableStepIndex === null ? tour.doneButtonLabel : tour.nextButtonLabel;
                     }
 
 
@@ -627,7 +640,9 @@ document.addEventListener('livewire:initialized', async function () {
                     if (previousReachableStepIndex !== null) {
                         popover.footer.appendChild(prevButton);
                     }
-                    popover.footer.appendChild(nextButton);
+                    if (nextButton) {
+                        popover.footer.appendChild(nextButton);
+                    }
                 },
                 steps: steps,
             });
@@ -636,7 +651,7 @@ document.addEventListener('livewire:initialized', async function () {
             // For steps flagged interactive the highlighted control stays usable (per-step
             // disableActiveInteraction:false) and the tour only advances when the trainee actually
             // performs the action. A single listener is attached per highlighted step and cleaned up
-            // when the step changes; the popover shows a subtle Skip instead of Next.
+            // when the step changes; the popover shows no Next/Skip button (only the action advances it).
             let interactiveCleanup = null;
 
             const clearInteractive = () => {
