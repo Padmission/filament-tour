@@ -783,7 +783,7 @@ document.addEventListener('livewire:initialized', async function () {
                         }
                     };
 
-                    const stateFilled = (path) => {
+                    const stateFilled = (path, expected) => {
                         const component = stateComponent();
                         if (!component) {
                             return false;
@@ -793,6 +793,9 @@ document.addEventListener('livewire:initialized', async function () {
                             value = component.$wire.get(path);
                         } catch (error) {
                             return false;
+                        }
+                        if (expected !== null && expected !== undefined) {
+                            return String(value ?? '').trim().toLowerCase() === expected.toLowerCase();
                         }
                         if (value === null || value === undefined || value === '') {
                             return false;
@@ -822,7 +825,17 @@ document.addEventListener('livewire:initialized', async function () {
 
                     const entrySatisfied = (entry) => {
                         if (entry.startsWith('@state:')) {
-                            return stateFilled(entry.slice(7));
+                            // "@state:<path>==<value>" advances only once the canonical state at <path>
+                            // exactly equals <value> (trimmed, case-insensitive) — for selects and other
+                            // fields where a partial/wrong value must not let the step move on.
+                            let path = entry.slice(7);
+                            let expected = null;
+                            const stateEq = path.indexOf('==');
+                            if (stateEq !== -1) {
+                                expected = path.slice(stateEq + 2).trim();
+                                path = path.slice(0, stateEq).trim();
+                            }
+                            return stateFilled(path, expected);
                         }
                         // "<selector>==<value>" advances only once the field's value exactly equals
                         // <value> (trimmed, case-insensitive). Use it for free-text fields the trainee

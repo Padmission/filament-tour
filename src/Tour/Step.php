@@ -181,10 +181,11 @@ class Step
      * EVERY entry is satisfied. Each entry is either a CSS selector (a text/number input that is
      * non-empty, or a checkbox/radio that is checked) or "@state:<path>" which reads the canonical
      * Livewire form state at <path> — the only reliable way to observe a Choices.js-style select that
-     * renders no native value-bearing element (e.g. "@state:data.type,@state:data.name"). A CSS-selector
-     * entry may also carry an exact-value requirement as "<selector>==<value>", which advances only once
-     * the field's value equals <value> (trimmed, case-insensitive) — use it for free-text fields the
-     * trainee types into so a partial value caught mid-keystroke never advances the step early.
+     * renders no native value-bearing element (e.g. "@state:data.type,@state:data.name"). Either form may
+     * carry an exact-value requirement as "<selector>==<value>" or "@state:<path>==<value>", which advances
+     * only once the field's value equals <value> (trimmed, case-insensitive) — use it for free-text fields
+     * the trainee types into (so a partial value caught mid-keystroke never advances early) or to require a
+     * specific option in a select.
      *
      * @return $this
      */
