@@ -27,6 +27,8 @@ class Step
 
     private ?string $iconColor = null;
 
+    private ?string $width = null;
+
     private bool $uncloseable = false;
 
     private bool $interactive = false;
@@ -144,6 +146,19 @@ class Step
     }
 
     /**
+     * Widen the popover for a content-heavy step. Accepts a Tailwind container size
+     * (xs, sm, md, lg, xl, 2xl … 7xl); the default popover width is used when null.
+     *
+     * @return $this
+     */
+    public function width(?string $width): self
+    {
+        $this->width = $width;
+
+        return $this;
+    }
+
+    /**
      * Set the color of your icon.
      *
      * @return $this
@@ -232,6 +247,11 @@ class Step
     public function getIconColor(): ?string
     {
         return $this->iconColor;
+    }
+
+    public function getWidth(): ?string
+    {
+        return $this->width;
     }
 
     public function isUncloseable(): bool

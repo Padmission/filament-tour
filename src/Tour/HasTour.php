@@ -35,6 +35,7 @@ trait HasTour
                                 ->with('iconColor', $step->getIconColor())
                                 ->render(),
                             'description' => $step->getDescription(),
+                            'width' => $step->getWidth(),
                         ],
 
                         'progress' => [
