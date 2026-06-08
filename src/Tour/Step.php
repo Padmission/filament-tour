@@ -177,6 +177,12 @@ class Step
      * $selector, defaulting to the step's own element). $delay (ms) holds the popover briefly after
      * the action so the result is visible before advancing.
      *
+     * For $event 'filled', $selector may be a comma-separated list and the step advances only once
+     * EVERY entry is satisfied. Each entry is either a CSS selector (a text/number input that is
+     * non-empty, or a checkbox/radio that is checked) or "@state:<path>" which reads the canonical
+     * Livewire form state at <path> — the only reliable way to observe a Choices.js-style select that
+     * renders no native value-bearing element (e.g. "@state:data.type,@state:data.name").
+     *
      * @return $this
      */
     public function interactive(string $event = 'click', ?string $selector = null, int $delay = 0): self

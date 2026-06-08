@@ -635,11 +635,6 @@ document.addEventListener('livewire:initialized', async function () {
                 if (!step || !step.interactive) {
                     return;
                 }
-                const findTarget = () => step.continueSelector ? document.querySelector(step.continueSelector) : element;
-                const target = findTarget();
-                if (!target) {
-                    return;
-                }
                 const eventName = step.continueEvent || 'click';
                 // Always hold the popover for at least a beat after the action so the result (e.g. a
                 // geocomplete autofill) is visible and the tour never feels like it jumps ahead.
@@ -654,15 +649,114 @@ document.addEventListener('livewire:initialized', async function () {
                     window.setTimeout(() => advanceFromActiveStep(step), delay);
                 };
 
-                // "filled": advance once the target has a value, however it was set — mouse, keyboard,
-                // or a programmatic autofill (e.g. a geocomplete). A DOM event alone misses keyboard
-                // selection, so poll the value instead.
+                // "filled": advance once the target(s) are satisfied, however set — mouse, keyboard, or a
+                // programmatic autofill (e.g. a geocomplete) that fires no reliable DOM event — so poll
+                // instead of listening. continueSelector may be a comma-separated list, and each entry is
+                // either a CSS selector (text/number input non-empty, or checkbox/radio checked) or
+                // "@state:<path>" which reads the canonical Livewire state at that path — the only way to
+                // observe a Choices.js-style select that renders no native value-bearing element. With
+                // several entries the step advances only once EVERY entry is satisfied.
                 if (eventName === 'filled') {
-                    const initial = (target.value || '').trim();
+                    const entries = (step.continueSelector || '')
+                        .split(',')
+                        .map((entry) => entry.trim())
+                        .filter(Boolean);
+
+                    const findHostId = () => {
+                        let node = element;
+                        while (node) {
+                            if (node.getAttribute && node.getAttribute('wire:id')) {
+                                return node.getAttribute('wire:id');
+                            }
+                            node = node.parentElement;
+                        }
+                        return null;
+                    };
+
+                    const stateComponent = () => {
+                        try {
+                            const all = window.Livewire.all();
+                            const hostId = findHostId();
+                            if (hostId) {
+                                const match = all.find((component) => component.id === hostId);
+                                if (match) {
+                                    return match;
+                                }
+                            }
+                            return all.find((component) => {
+                                try {
+                                    return typeof component.$wire.get('data') === 'object';
+                                } catch (error) {
+                                    return false;
+                                }
+                            });
+                        } catch (error) {
+                            return null;
+                        }
+                    };
+
+                    const stateFilled = (path) => {
+                        const component = stateComponent();
+                        if (!component) {
+                            return false;
+                        }
+                        let value;
+                        try {
+                            value = component.$wire.get(path);
+                        } catch (error) {
+                            return false;
+                        }
+                        if (value === null || value === undefined || value === '') {
+                            return false;
+                        }
+                        if (Array.isArray(value)) {
+                            return value.length > 0;
+                        }
+                        if (typeof value === 'object') {
+                            return Object.keys(value).length > 0;
+                        }
+                        return true;
+                    };
+
+                    // Snapshot the starting value of each single-value CSS entry so a field that is
+                    // already pre-filled when the step begins requires an actual change before advancing
+                    // (preserves the original single-selector behaviour). Checkbox/radio and state
+                    // entries need no snapshot — they start unchecked/empty.
+                    const initials = {};
+                    entries.forEach((entry) => {
+                        if (!entry.startsWith('@state:')) {
+                            const node = document.querySelector(entry);
+                            if (node && node.type !== 'checkbox' && node.type !== 'radio') {
+                                initials[entry] = (node.value || '').trim();
+                            }
+                        }
+                    });
+
+                    const entrySatisfied = (entry) => {
+                        if (entry.startsWith('@state:')) {
+                            return stateFilled(entry.slice(7));
+                        }
+                        const node = document.querySelector(entry);
+                        if (!node) {
+                            return false;
+                        }
+                        if (node.type === 'checkbox' || node.type === 'radio') {
+                            return node.checked;
+                        }
+                        const value = (node.value || '').trim();
+                        return value !== '' && value !== (initials[entry] || '');
+                    };
+
+                    if (entries.length === 0) {
+                        const handler = () => advance();
+                        element.addEventListener('click', handler);
+                        interactiveCleanup = () => element.removeEventListener('click', handler);
+
+                        return;
+                    }
+
                     const poll = window.setInterval(() => {
-                        const current = findTarget();
-                        const value = current ? (current.value || '').trim() : '';
-                        if (value !== '' && value !== initial) {
+                        if (entries.every(entrySatisfied)) {
                             advance();
                         }
                     }, 250);
@@ -671,6 +765,11 @@ document.addEventListener('livewire:initialized', async function () {
                     return;
                 }
 
+                const findTarget = () => step.continueSelector ? document.querySelector(step.continueSelector) : element;
+                const target = findTarget();
+                if (!target) {
+                    return;
+                }
                 const handler = () => advance();
                 target.addEventListener(eventName, handler);
                 interactiveCleanup = () => target.removeEventListener(eventName, handler);
