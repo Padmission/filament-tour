@@ -242,6 +242,26 @@ document.addEventListener('livewire:initialized', async function () {
 
     Livewire.dispatch('filament-tour::load-elements', {request: window.location})
 
+    // Re-open the current page's tour entirely client-side, from the already-loaded `tours`. A
+    // "Restart walkthrough" button must NOT re-dispatch load-elements: that round-trips the host page's
+    // Livewire component, whose snapshot on a heavy form (e.g. property create) can exceed Livewire's
+    // payload limit (PayloadTooLargeException). Clearing the seen flag + re-running selectTour avoids
+    // the network entirely.
+    window.filamentTour = window.filamentTour || {};
+    window.filamentTour.restartCurrentTour = () => {
+        try {
+            localStorage.setItem('tours', '[]');
+        } catch (error) {
+        }
+        if (activeTourDriver) {
+            try {
+                activeTourDriver.destroy();
+            } catch (error) {
+            }
+        }
+        selectTour(tours);
+    };
+
     Livewire.on('filament-tour::loaded-elements', function (data) {
 
         pluginData = data;
