@@ -724,7 +724,7 @@ document.addEventListener('livewire:initialized', async function () {
                     // entries need no snapshot — they start unchecked/empty.
                     const initials = {};
                     entries.forEach((entry) => {
-                        if (!entry.startsWith('@state:')) {
+                        if (!entry.startsWith('@state:') && !entry.includes('==')) {
                             const node = document.querySelector(entry);
                             if (node && node.type !== 'checkbox' && node.type !== 'radio') {
                                 initials[entry] = (node.value || '').trim();
@@ -736,7 +736,17 @@ document.addEventListener('livewire:initialized', async function () {
                         if (entry.startsWith('@state:')) {
                             return stateFilled(entry.slice(7));
                         }
-                        const node = document.querySelector(entry);
+                        // "<selector>==<value>" advances only once the field's value exactly equals
+                        // <value> (trimmed, case-insensitive). Use it for free-text fields the trainee
+                        // types into, so a partial value caught mid-keystroke never advances early.
+                        let selector = entry;
+                        let expected = null;
+                        const eq = entry.indexOf('==');
+                        if (eq !== -1) {
+                            selector = entry.slice(0, eq).trim();
+                            expected = entry.slice(eq + 2).trim();
+                        }
+                        const node = document.querySelector(selector);
                         if (!node) {
                             return false;
                         }
@@ -744,6 +754,9 @@ document.addEventListener('livewire:initialized', async function () {
                             return node.checked;
                         }
                         const value = (node.value || '').trim();
+                        if (expected !== null) {
+                            return value.toLowerCase() === expected.toLowerCase();
+                        }
                         return value !== '' && value !== (initials[entry] || '');
                     };
 
