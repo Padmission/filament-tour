@@ -10,6 +10,56 @@ document.addEventListener('livewire:initialized', async function () {
     let tours = [];
     let highlights = [];
 
+    // Livewire's DOM morph resets an element's attributes to the server-rendered version, which strips
+    // the `.driver-active-element` class driver.js adds at runtime. That silently re-disables
+    // pointer-events on the highlighted control (driver's re-enable rule keys on that class), so after a
+    // live() field triggers a re-render an interactive step's control — e.g. a checkbox the trainee must
+    // click — becomes unclickable. Re-apply the class to the current step's element after every morph.
+    let activeTourDriver = null;
+    let activeTourSteps = null;
+
+    const reapplyDriverActiveElement = () => {
+        if (! activeTourDriver || ! activeTourSteps || ! document.body.classList.contains('driver-active')) {
+            return;
+        }
+        let index;
+        try {
+            index = activeTourDriver.getActiveIndex();
+        } catch (error) {
+            return;
+        }
+        if (index === undefined || index === null) {
+            return;
+        }
+        const step = activeTourSteps[index];
+        if (! step || ! step.element) {
+            return;
+        }
+        const element = typeof step.element === 'string' ? document.querySelector(step.element) : step.element;
+        if (! element) {
+            return;
+        }
+        if (! element.classList.contains('driver-active-element')) {
+            element.classList.add('driver-active-element');
+        }
+        if (! step.interactive && ! element.classList.contains('driver-no-interaction')) {
+            element.classList.add('driver-no-interaction');
+        }
+    };
+
+    ['morphed', 'morph.updated'].forEach((hook) => {
+        try {
+            window.Livewire.hook(hook, reapplyDriverActiveElement);
+        } catch (error) {
+        }
+    });
+    try {
+        window.Livewire.hook('commit', ({succeed}) => {
+            succeed(() => reapplyDriverActiveElement());
+        });
+    } catch (error) {
+    }
+
     function waitForElement(selector, callback) {
         if (document.querySelector(selector)) {
             callback(document.querySelector(selector));
@@ -479,6 +529,9 @@ document.addEventListener('livewire:initialized', async function () {
                     }
                 }),
                 onDestroyed: ((element, step, {config, state}) => {
+                    activeTourDriver = null;
+                    activeTourSteps = null;
+
                     if (pluginData.dismiss_on_overlay_click && !localStorage.getItem('tours').includes(tour.id)) {
                         markTourSeen(tour);
                     }
@@ -791,6 +844,9 @@ document.addEventListener('livewire:initialized', async function () {
             driverObj.__advanceFromActiveStep = advanceFromActiveStep;
             driverObj.__attachInteractive = attachInteractive;
             driverObj.__clearInteractive = clearInteractive;
+
+            activeTourDriver = driverObj;
+            activeTourSteps = steps;
 
             driveFirstReachableStep(driverObj, steps, previewStartIndex);
         }
