@@ -624,19 +624,34 @@ document.addEventListener('livewire:initialized', async function () {
                     // parent (native scrollIntoView walks all scrollable ancestors) and reposition the
                     // popover so it points at the now-visible element instead of floating detached.
                     if (element && typeof element.getBoundingClientRect === 'function') {
-                        const rect = element.getBoundingClientRect();
-                        const offscreen = rect.bottom < 8 || rect.top > (window.innerHeight - 8);
-                        if (offscreen) {
-                            // behavior:'instant' is required — the default ('auto') honours the page's
-                            // CSS scroll-behavior:smooth, whose animation gets interrupted here and leaves
-                            // the element unscrolled. Instant scrolls deterministically before we refresh.
+                        const isOffscreen = () => {
+                            const rect = element.getBoundingClientRect();
+
+                            return rect.bottom < 8 || rect.top > (window.innerHeight - 8);
+                        };
+
+                        // behavior:'instant' is required — the default ('auto') honours the page's CSS
+                        // scroll-behavior:smooth, whose animation gets interrupted here and leaves the
+                        // element unscrolled. Re-assert the scroll a couple of times because driver's own
+                        // step-transition scroll (and a Livewire relation-manager morph) can reset it back
+                        // for ~100ms right after the highlight; each pass also refreshes the popover.
+                        const scrollIntoViewAndRefresh = () => {
+                            if (!isOffscreen()) {
+                                return;
+                            }
+
                             element.scrollIntoView({block: 'center', inline: 'nearest', behavior: 'instant'});
-                            window.setTimeout(() => {
-                                try {
-                                    driverObj.refresh();
-                                } catch (error) {
-                                }
-                            }, 80);
+
+                            try {
+                                driverObj.refresh();
+                            } catch (error) {
+                            }
+                        };
+
+                        if (isOffscreen()) {
+                            scrollIntoViewAndRefresh();
+                            window.setTimeout(scrollIntoViewAndRefresh, 120);
+                            window.setTimeout(scrollIntoViewAndRefresh, 350);
                         }
                     }
                 }),
