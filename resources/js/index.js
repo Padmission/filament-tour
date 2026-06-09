@@ -198,21 +198,43 @@ document.addEventListener('livewire:initialized', async function () {
         });
     }
 
-    // Poll for a step's element to appear, then run onFound; give up after `timeout` ms and run
-    // onTimeout. Used so a step inside an async-appearing container (a modal/slideover the previous step
-    // just opened, or a control revealed by a prior click) is waited for rather than skipped.
+    // Poll for a step's element to appear AND stop moving, then run onFound; give up after `timeout` ms
+    // (using the element if it exists by then, else onTimeout). Used so a step inside an async-appearing
+    // container (a modal/slideover the previous step just opened, or a control revealed by a prior click)
+    // is waited for rather than skipped — and crucially, we wait for its position to SETTLE so the popover
+    // isn't placed over a still-sliding element (a half-open slideover would otherwise cover the field).
     function waitForStepElement(step, timeout, onFound, onTimeout) {
         const startedAt = Date.now();
+        let lastRect = null;
+        let stableCount = 0;
 
         const poll = () => {
-            if (resolveStepElement(step)) {
-                onFound();
+            const element = resolveStepElement(step);
 
-                return;
+            if (element) {
+                const rect = element.getBoundingClientRect();
+                const settled = lastRect
+                    && rect.height > 0
+                    && Math.abs(rect.top - lastRect.top) < 1
+                    && Math.abs(rect.left - lastRect.left) < 1;
+                stableCount = settled ? stableCount + 1 : 0;
+                lastRect = rect;
+
+                // Unchanged across two consecutive polls ⇒ any open/slide animation has finished.
+                if (stableCount >= 1) {
+                    onFound();
+
+                    return;
+                }
             }
 
             if (Date.now() - startedAt >= timeout) {
-                onTimeout();
+                // Timed out: drive to the element if it exists (just not provably settled), else skip.
+                if (resolveStepElement(step)) {
+                    onFound();
+                } else {
+                    onTimeout();
+                }
 
                 return;
             }
