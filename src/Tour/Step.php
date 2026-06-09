@@ -33,6 +33,8 @@ class Step
 
     private bool $interactive = false;
 
+    private bool $passive = false;
+
     private string $continueEvent = 'click';
 
     private ?string $continueSelector = null;
@@ -58,6 +60,10 @@ class Step
 
         if ($step['interactive'] ?? false) {
             $app->interactive($step['continueEvent'] ?? 'click', $step['continueSelector'] ?? null, $step['continueDelay'] ?? 0);
+        }
+
+        if ($step['passive'] ?? false) {
+            $app->passive();
         }
 
         if ($step['events']['dispatchOnNext']) {
@@ -187,10 +193,11 @@ class Step
     }
 
     /**
-     * Make this step hands-on: the highlighted element stays interactive, the Next button is replaced
-     * with a small Skip, and the tour only advances when the user performs the action ($event on
-     * $selector, defaulting to the step's own element). $delay (ms) holds the popover briefly after
-     * the action so the result is visible before advancing.
+     * Make this step hands-on: the highlighted element stays usable, the Next button is removed
+     * entirely, and the tour only advances when the user performs the action ($event on $selector,
+     * defaulting to the step's own element). $delay (ms) holds the popover briefly after the action so
+     * the result is visible before advancing. (The element is usable by default in v6; this also gates
+     * advancement on the action — call passive() instead for a read-only step that keeps its Next button.)
      *
      * For $event 'filled', $selector may be a comma-separated list and the step advances only once
      * EVERY entry is satisfied. Each entry is either a CSS selector (a text/number input that is
@@ -210,6 +217,25 @@ class Step
         $this->continueEvent = $event;
         $this->continueSelector = $selector;
         $this->continueDelay = $delay;
+
+        return $this;
+    }
+
+    /**
+     * Lock the highlighted element so the trainee cannot interact with it during this step (a
+     * read-only "just read this" step). As of v6 the highlighted control is USABLE by default — call
+     * this only when a step should explicitly forbid interaction. Mutually exclusive with
+     * interactive(): an interactive step is always usable.
+     *
+     * @return $this
+     */
+    public function passive(bool|Closure $passive = true): self
+    {
+        if (is_bool($passive)) {
+            $this->passive = $passive;
+        } else {
+            $this->passive = $passive();
+        }
 
         return $this;
     }
@@ -262,6 +288,11 @@ class Step
     public function isInteractive(): bool
     {
         return $this->interactive;
+    }
+
+    public function isPassive(): bool
+    {
+        return $this->passive;
     }
 
     public function getContinueEvent(): string

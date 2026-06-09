@@ -11,10 +11,11 @@ document.addEventListener('livewire:initialized', async function () {
     let highlights = [];
 
     // Livewire's DOM morph resets an element's attributes to the server-rendered version, which strips
-    // the `.driver-active-element` class driver.js adds at runtime. That silently re-disables
-    // pointer-events on the highlighted control (driver's re-enable rule keys on that class), so after a
-    // live() field triggers a re-render an interactive step's control — e.g. a checkbox the trainee must
-    // click — becomes unclickable. Re-apply the class to the current step's element after every morph.
+    // the runtime classes driver.js adds (`.driver-active-element`, and `.driver-no-interaction` on a
+    // locked step). That silently flips the highlighted control's pointer-events (driver's enable/lock
+    // rules key on those classes), so after a live() field re-renders, a usable control — e.g. a
+    // checkbox the trainee must click — becomes unclickable (or a locked control becomes clickable).
+    // Re-assert BOTH classes for the current step after every morph, from the step's own lock state.
     let activeTourDriver = null;
     let activeTourSteps = null;
 
@@ -42,8 +43,13 @@ document.addEventListener('livewire:initialized', async function () {
         if (! element.classList.contains('driver-active-element')) {
             element.classList.add('driver-active-element');
         }
-        if (! step.interactive && ! element.classList.contains('driver-no-interaction')) {
+        // v6: usable by default — only a step serialized with disableActiveInteraction:true (i.e.
+        // ->passive()) stays locked. Drive the class off that flag in BOTH directions so a morph can
+        // neither lock a usable control nor unlock a passive one.
+        if (step.disableActiveInteraction) {
             element.classList.add('driver-no-interaction');
+        } else {
+            element.classList.remove('driver-no-interaction');
         }
     };
 
@@ -533,7 +539,9 @@ document.addEventListener('livewire:initialized', async function () {
                 // keyboard control entirely — Escape must not close and the arrow keys must not let a
                 // trainee skip an interactive step they are meant to complete.
                 allowKeyboardControl: ! tour.confirmClose,
-                disableActiveInteraction: true,
+                // v6: the highlighted control is usable by default; a step opts INTO a read-only lock
+                // with ->passive(), which serializes a per-step disableActiveInteraction:true override.
+                disableActiveInteraction: false,
                 overlayColor: localStorage.theme === 'light' ? tour.colors.light : tour.colors.dark,
                 onDeselected: ((element, step, {config, state}) => {
                     driverObj.__clearInteractive?.();

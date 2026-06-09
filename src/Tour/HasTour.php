@@ -62,9 +62,16 @@ trait HasTour
                         $data[$item]['continueEvent'] = $step->getContinueEvent();
                         $data[$item]['continueSelector'] = $step->getContinueSelector();
                         $data[$item]['continueDelay'] = $step->getContinueDelay();
-                        // Let the trainee actually use the highlighted control during this step.
-                        $data[$item]['disableActiveInteraction'] = false;
                     }
+
+                    // v6: the highlighted control is usable by DEFAULT. A step is only locked
+                    // (driver.js's .driver-no-interaction) when it is explicitly marked passive() and is
+                    // not interactive. disableActiveInteraction is emitted per-step so it overrides the
+                    // driver instance default; the `passive` flag lets the JS re-assert the lock state
+                    // after a Livewire morph (which would otherwise strip the runtime class).
+                    $locked = $step->isPassive() && ! $step->isInteractive();
+                    $data[$item]['passive'] = $locked;
+                    $data[$item]['disableActiveInteraction'] = $locked;
 
                     return $data;
                 })->toArray());
