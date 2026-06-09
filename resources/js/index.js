@@ -595,6 +595,25 @@ document.addEventListener('livewire:initialized', async function () {
                 }),
                 onHighlighted: ((element, step, {config, state}) => {
                     driverObj.__attachInteractive?.(element, state.activeStep);
+
+                    // driver's auto-scroll targets the window, which cannot reveal an element inside a
+                    // Filament modal/slideover's OWN scroll container. If the step's element is off-screen
+                    // (e.g. a section far down a tall slideover), scroll it into view within its scroll
+                    // parent (native scrollIntoView walks all scrollable ancestors) and reposition the
+                    // popover so it points at the now-visible element instead of floating detached.
+                    if (element && typeof element.getBoundingClientRect === 'function') {
+                        const rect = element.getBoundingClientRect();
+                        const offscreen = rect.bottom < 8 || rect.top > (window.innerHeight - 8);
+                        if (offscreen) {
+                            element.scrollIntoView({block: 'center', inline: 'nearest'});
+                            window.setTimeout(() => {
+                                try {
+                                    driverObj.refresh();
+                                } catch (error) {
+                                }
+                            }, 80);
+                        }
+                    }
                 }),
                 onCloseClick: ((element, step, {config, state}) => {
                     // The × is the deliberate way out of a confirmClose walkthrough — confirm first so a
