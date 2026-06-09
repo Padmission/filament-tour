@@ -627,7 +627,10 @@ document.addEventListener('livewire:initialized', async function () {
                         const rect = element.getBoundingClientRect();
                         const offscreen = rect.bottom < 8 || rect.top > (window.innerHeight - 8);
                         if (offscreen) {
-                            element.scrollIntoView({block: 'center', inline: 'nearest'});
+                            // behavior:'instant' is required — the default ('auto') honours the page's
+                            // CSS scroll-behavior:smooth, whose animation gets interrupted here and leaves
+                            // the element unscrolled. Instant scrolls deterministically before we refresh.
+                            element.scrollIntoView({block: 'center', inline: 'nearest', behavior: 'instant'});
                             window.setTimeout(() => {
                                 try {
                                     driverObj.refresh();
