@@ -73,6 +73,12 @@ trait HasTour
                     $data[$item]['passive'] = $locked;
                     $data[$item]['disableActiveInteraction'] = $locked;
 
+                    // When set, the JS waits for this step's element to appear (with a timeout) instead
+                    // of skipping the step — needed for steps inside an async-appearing modal/slideover.
+                    if ($step->isAwaitingElement()) {
+                        $data[$item]['awaitElement'] = true;
+                    }
+
                     return $data;
                 })->toArray());
 

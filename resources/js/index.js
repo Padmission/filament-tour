@@ -198,7 +198,32 @@ document.addEventListener('livewire:initialized', async function () {
         });
     }
 
-    function goToNextReachableStep(driverObj, steps, currentIndex, onTourComplete) {
+    // Poll for a step's element to appear, then run onFound; give up after `timeout` ms and run
+    // onTimeout. Used so a step inside an async-appearing container (a modal/slideover the previous step
+    // just opened, or a control revealed by a prior click) is waited for rather than skipped.
+    function waitForStepElement(step, timeout, onFound, onTimeout) {
+        const startedAt = Date.now();
+
+        const poll = () => {
+            if (resolveStepElement(step)) {
+                onFound();
+
+                return;
+            }
+
+            if (Date.now() - startedAt >= timeout) {
+                onTimeout();
+
+                return;
+            }
+
+            window.setTimeout(poll, 150);
+        };
+
+        poll();
+    }
+
+    function advanceToNextReachableStep(driverObj, steps, currentIndex, onTourComplete) {
         queueStepRefresh(() => {
             const reachableStepIndices = refreshReachableStepIndices(steps);
             const nextIndex = findNextReachableStepIndex(reachableStepIndices, currentIndex);
@@ -211,6 +236,28 @@ document.addEventListener('livewire:initialized', async function () {
 
             driverObj.moveTo(nextIndex);
         });
+    }
+
+    function goToNextReachableStep(driverObj, steps, currentIndex, onTourComplete) {
+        const nextSequentialIndex = currentIndex + 1;
+        const nextStep = steps[nextSequentialIndex];
+
+        // An awaitElement step's anchor isn't in the DOM the instant we advance (e.g. a field in a
+        // slideover the previous step just opened). Wait for it to appear and drive to it, instead of
+        // the default behaviour of skipping past it to the next already-present step. Fall back to the
+        // normal reachable-skip after a timeout so a genuinely-absent anchor still can't hang the tour.
+        if (nextStep && nextStep.awaitElement && nextStep.element && !resolveStepElement(nextStep)) {
+            waitForStepElement(
+                nextStep,
+                8000,
+                () => driverObj.moveTo(nextSequentialIndex),
+                () => advanceToNextReachableStep(driverObj, steps, currentIndex, onTourComplete),
+            );
+
+            return;
+        }
+
+        advanceToNextReachableStep(driverObj, steps, currentIndex, onTourComplete);
     }
 
     function goToPreviousReachableStep(driverObj, steps, currentIndex) {

@@ -35,6 +35,8 @@ class Step
 
     private bool $passive = false;
 
+    private bool $awaitElement = false;
+
     private string $continueEvent = 'click';
 
     private ?string $continueSelector = null;
@@ -64,6 +66,10 @@ class Step
 
         if ($step['passive'] ?? false) {
             $app->passive();
+        }
+
+        if ($step['awaitElement'] ?? false) {
+            $app->awaitElement();
         }
 
         if ($step['events']['dispatchOnNext']) {
@@ -241,6 +247,23 @@ class Step
     }
 
     /**
+     * Wait for this step's element to appear before driving to it, instead of skipping the step when
+     * the element is not yet in the DOM. Use it for a step that lives in an async-appearing container —
+     * a field inside a modal/slideover the previous step just opened, or a control revealed by a prior
+     * click — so the tour pauses for the element rather than jumping past it to the next present step.
+     * The advance falls back to the normal "skip to the next reachable step" behaviour after a timeout,
+     * so a genuinely-absent anchor still can't hang the walkthrough.
+     *
+     * @return $this
+     */
+    public function awaitElement(bool|Closure $awaitElement = true): self
+    {
+        $this->awaitElement = is_bool($awaitElement) ? $awaitElement : (bool) $awaitElement();
+
+        return $this;
+    }
+
+    /**
      * Create the instance of your step.
      * <br>
      * If no **$element** defined, the step will be shown as a modal.
@@ -293,6 +316,11 @@ class Step
     public function isPassive(): bool
     {
         return $this->passive;
+    }
+
+    public function isAwaitingElement(): bool
+    {
+        return $this->awaitElement;
     }
 
     public function getContinueEvent(): string
