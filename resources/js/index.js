@@ -599,10 +599,16 @@ document.addEventListener('livewire:initialized', async function () {
                 onCloseClick: ((element, step, {config, state}) => {
                     // The × is the deliberate way out of a confirmClose walkthrough — confirm first so a
                     // stray click can't abandon it, then tear down (destroy() == g(false), no re-prompt).
+                    // redirectOnClose (if set) sends the user back to where they launched the tour from
+                    // instead of leaving them on the abandoned page — it fires ONLY on this explicit close,
+                    // never on normal completion (which destroys the tour through its own redirect).
                     if (tour.confirmClose) {
                         if (window.confirm(tour.confirmCloseMessage || 'End the walkthrough?')) {
                             driverObj.destroy();
                             markTourSeen(tour);
+                            if (tour.redirectOnClose) {
+                                window.location.href = tour.redirectOnClose;
+                            }
                         }
 
                         return;
@@ -612,6 +618,10 @@ document.addEventListener('livewire:initialized', async function () {
                         driverObj.destroy();
 
                     markTourSeen(tour);
+
+                    if (tour.redirectOnClose) {
+                        window.location.href = tour.redirectOnClose;
+                    }
                 }),
                 onDestroyStarted: ((element, step, {config, state}) => {
                     // Overlay clicks (and any other implicit close) must do nothing for a confirmClose

@@ -93,6 +93,7 @@ trait HasTour
 
                         'confirmClose' => $tour->isConfirmClose(),
                         'confirmCloseMessage' => $tour->getConfirmCloseMessage(),
+                        'redirectOnClose' => $tour->getRedirectOnClose(),
 
                         'route' => $route,
 

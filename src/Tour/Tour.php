@@ -30,6 +30,8 @@ class Tour
 
     private ?string $confirmCloseMessage = null;
 
+    private ?string $redirectOnClose = null;
+
     private bool $disableEvents = false;
 
     private bool $ignoreRoutes = false;
@@ -153,6 +155,20 @@ class Tour
     {
         $this->confirmClose = $this->evaluate($confirmClose);
         $this->confirmCloseMessage = $message;
+
+        return $this;
+    }
+
+    /**
+     * Navigate the browser to this URL after the tour is closed (the × — confirmed first when
+     * confirmClose is set). Use it to return the user to where they launched the walkthrough from
+     * instead of leaving them stranded on the (now-abandoned) page.
+     *
+     * @return $this
+     */
+    public function redirectOnClose(?string $url): self
+    {
+        $this->redirectOnClose = $url;
 
         return $this;
     }
@@ -288,6 +304,11 @@ class Tour
     public function getConfirmCloseMessage(): ?string
     {
         return $this->confirmCloseMessage;
+    }
+
+    public function getRedirectOnClose(): ?string
+    {
+        return $this->redirectOnClose;
     }
 
     public function hasDisabledEvents(): bool
