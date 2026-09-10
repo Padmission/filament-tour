@@ -150,3 +150,43 @@
 .driver-popover.driver-popover-dark .driver-popover-prev-btn:focus {
     background: rgb(51 65 85);
 }
+
+/* Native dark-mode via Filament's .dark ancestor class.
+   Matches the Tailwind-style overrides used in consuming apps. */
+
+.dark .driver-popover-arrow {
+    border: 5px solid rgb(17 24 39) !important;
+    border-right-color: #0000 !important;
+    border-bottom-color: #0000 !important;
+    border-top-color: #0000 !important;
+}
+
+.dark .driver-popover {
+    background: rgb(17 24 39) !important;
+    color: rgb(249 250 251) !important;
+    border: none !important;
+    box-shadow:
+        0 0 0 1px rgb(255 255 255 / 0.1),
+        0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+}
+
+.dark .driver-popover .driver-popover-close-btn:hover,
+.dark .driver-popover .driver-popover-close-btn:focus {
+    color: rgb(249 250 251);
+}
+
+.dark .driver-popover .driver-popover-progress-text {
+    color: rgb(156 163 175);
+}
+
+.dark .driver-popover .driver-popover-prev-btn {
+    background: rgb(31 41 55);
+    color: rgb(249 250 251);
+    border: none;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.15);
+}
+
+.dark .driver-popover .driver-popover-prev-btn:hover,
+.dark .driver-popover .driver-popover-prev-btn:focus {
+    background: rgb(55 65 81);
+}
